@@ -1,0 +1,110 @@
+SPaASM - Zadanie 3
+Meno: Peter Berta
+Tema: Spatny preklad (disassembling), staticka a dynamicka analyza neznameho programu
+Platforma: OS Windows, Intel x86
+Termin odovzdania: 11. cvicenie - 26.4.2017
+Hodnotenie: maximalne 10b
+
+Riesenie:
+1) Aka je spravna dlzka retazca? 
+Spravna dlzka retazca je 8.
+Na adrese 00401092 a 0040109B su instrukcie, ktore porovnavaju dlzku zadanych retazcov
+s cislom 8. Ak sa aspon jedna dlzka nerovna 8, program zobrazi spravu 'Wrong!'.
+
+2)Prvy retazec vytvorte kombinaciou mena a priezviska...
+meno: Peter, priez.: Berta, retazec: PBeetret -> potreba upravy: PBeAtreA
+
+3)Aky druhy retazec by zodpovedal takto vytvorenemu prvemu? Odpoved: y>asBuij
+Odpoved som ziskal pomocou programu OllyDbg. Najprv som nastavil brakpoint na 
+instrukciu ktora nasleduje po uspesnom otestovani dlzky oboch retazcov. Nasledne 
+som postupne krokoval instrukcie az kym som sa nedostal k serii instrukcii, ktore
+kontrolovali korektnost druheho retazca. Identifikoval som priamo instrukcie, kde 
+bol porovnavany mnou zadany znak v druhom retazci s ocakavanym znakom. Zisteny znak
+som si zapisal. Tento postup som opakoval, kym som neziskal vsetkych 8 znakov.
+
+- Sposob generovania druheho retazca:
+Znaky druheho retazca su generovane po jednom z prveho retazca. Najprv sa prvy znak 
+prveho retazca nakopiruje do AH. Nasledne sa k nemu pripocita znak 'k' (pre cely 
+retazec je to 'kaayybaB') a odpocita 'B' (pre cely retazec 'BeeGGeeK'). Pripocitavanie 
+a odcitavanie sa striedaju (4x je prve pripocitanie). Tak sa moze stat, ze pozadovany 
+znak nemusi byt v beznom rozsahu ASCII tabulky.  
+
+4)Ak nie je mozne pozadovany retazec zadat, tak upravte prvy retazec.
+Prvy retazec som musel mierne upravit z toho dovodu, ze pri porovnavani znakov, ktore
+som uz popisal, bol po mne vyzadovany znak z cislom 97, co je mimo rozsahu beznej
+ASCII tabulky. Toto cislo som potreboval zmensit, a preto som jednoducho znak
+nahradil co najnizsim pismenom v ASCII tabulke a sice znakom 'A'. Nemusi to byt 
+prave pismeno 'A' Takuto upravu som musel vykonat dvakrat.
+
+5)Argumenty a hodnoty: DialogBoxParam, GetDlgItemText, MessageBox
+DialogBoxParam()
+- Argumenty a ich hodnoty (poradie v akom su pushovane):
+ LPARAM dwInitParam = 0 ;
+ DLGPROC lpDialogFunc = offset DialogFunc ;smernik na dialog box funkciu- spracovava 
+spravy z modalnych dialogovych boxov
+ HWND hWndParent = 0 ;handle pre rodicovske okno
+ LPCSTR lpTemplateName = 64h ;template/sablona
+ HINSTANCE hInstance = [ebp+hInstance] ;handle modulu, ktory obsahuje template
+- Funkcia:
+ Vytvori dialogove okno podla template-u
+
+GetDlgItemText()
+- Argumenty a ich hodnoty (poradie v akom su pushovane):
+ int nMaxCount = 1FEH ;maximalna dlzka nacitanych znakov
+ LPSTR lpString = eax ;buffer pre ziskavany retazec
+ int nIDDlgItem = 65h (66h) ;identifikator prvku, z ktoreho ziskavame informaciu
+ HWND hDlg = [ebp+hDlg] ;handle dialog boxu
+- Funkcia:
+ Ziska text z dialog boxu
+
+MessageBox()
+- Argumenty a ich hodnoty (poradie v akom su pushovane):
+ UINT uType = 0 ;specialny vyzor message boxu
+ LPCSTR lpCaption = offset Caption ;titulka okna (default = 'Error')
+ LPCSTR lpText = eax ;zobrazovany retazec
+ HWND hWnd = 0 ;handle na majitela okna (ak =0, m. box nema ownera)
+- Funkcia:
+ Zobrazi dialogove okno so spravov
+
+6) Na akych adresach sa vola DialogBoxParam a aky je jej vyznam?
+Tato funkcia sa vola skoro uplne na zaciatku (0040101E), pretoze prave ona vytvori
+dialogove okno, do ktoreho budeme vpisovat nase dva retazce.
+
+7) Na akej adrese sa vola MessageBox v pripade spravne zadanych retazcov a s akym 
+textom?
+Vola sa na adrese 0040111D. Titulka dialog boxu je 'OK. now find serial for name:'.
+Obsah spravy je 'Bzr4ueyG'.
+
+Odpoved je teda 'Bzr4ueyG' -> 'kvnfCh}p'
+
+8) Kedy sa kod programu vykonava na adrese 004010A4?
+Do tohto bodu sa program dostane vtedy, ked su dlzky zadanych retazcov nespravne.
+- z adresy 00401095 ak dlzka prveho retazca nie je 8
+- z adresy 00401099 ak je obsah registra EAX = 0 (tiez dlzka prveho retazca)
+- z adresy 0040109E ak dlzka druheho retaza nie je 8
+- z adresy 004010A2 ak je obsah registra ECX = 0 (tiez dlzka druheho retazca)
+
+- skoky z adries 00401099 a 004010A2 su ale podla mojho nazoru irelevantne z toho
+dovodu, ze pred nimi uz je dany register testovany na rovnost s cislom 8 
+('cmp eax,8'). Do bodu porovnavania ('or eax,eax') by sa teda program nemal dostat.
+Potencialne vyhody pouzitia logickej operacie 'or' pred pouzitim instrukcie 
+('cmp eax,0') je akurat taky, ze usetrime trochu pamate. Mozno mierne zlepsenie
+vykonu ('eax or eax' vs 'eax - 0') stale nevysvetluje existenciu tychto porovani.
+
+Potencialna vyhoda pouzitia operacie 'or' spociva v tom, ze tato operacia nastavi
+o dva flagy viac, ako instrukcia 'cmp'. Okrem flagu ZF tiez nastavuje SF a PF, 
+ktore hovoria o nastaveni najsignifikantnejsieho bitu a o parite. V nasom pripade
+su ale oba flagy irelevantne.
+
+9) Vytvorte upraveny program (novy exe subor) ktory akceptuje lubovolne zadane
+retazce. Uvedte postup. 
+Novy .exe subor som som vytvoril pomocou nastroja OllyDbg. Na adrese 004010A4 som 
+upravil instrukciu 'MOV EAX,0' na 'MOV EAX,1'. Teraz aj v pripade ze retazce maju 
+nespravnu dlzku tak sa zobrazi sprava 'OK. now find serial for name:'.
+
+To ale neviresi vsetky pripady. Moze sa stat, ze oba retazce maju spravnu dlzku ale
+nie su korektne voci sebe. V tom pripade treba sa zobrazi sprava 'Wrong!'.
+Aby som sa vyhol tejto situacii, tak som upravil instrukciu na adrese 00401095 z
+'JNZ SHORT 004010A4' na 'JMP SHORT 004010A4'. Teraz program jednoducho preskoci
+porovnavanie dlzky a teda sa nedostane na evaluaciu retazcov a jednoducho zobrazi
+spravu 'OK. now find serial for name:'.
